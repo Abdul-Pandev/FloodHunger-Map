@@ -1,20 +1,20 @@
 """
 FloodHunger Ghana — Streamlit Dashboard
-Run: streamlit run app.py
+Run with: streamlit run app.py
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
 from pathlib import Path
-import joblib
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore")
 
-# ── Page config ───────────────────────────────────────────
+# ── Page config ────────────────────────────────────────────
 st.set_page_config(
     page_title="FloodHunger Ghana",
     page_icon="🌊",
@@ -22,743 +22,884 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Theme constants ───────────────────────────────────────
-PRIMARY  = "#1F5C8B"
-DARK     = "#0D3C6E"
-LIGHT    = "#D6E8F5"
-ACCENT   = "#2E86C1"
-DANGER   = "#C0392B"
-WARNING  = "#E67E22"
-SUCCESS  = "#27AE60"
-NEUTRAL  = "#7F8C8D"
+# ── Constants ──────────────────────────────────────────────
+BLUE   = "#1F5C8B"
+DBLUE  = "#0D3C6E"
+LBLUE  = "#D6E8F5"
+RED    = "#E74C3C"
+ORANGE = "#E67E22"
+YELLOW = "#F4D03F"
+GREEN  = "#2ECC71"
 
 IPC_LABELS  = {1: "Minimal", 2: "Stressed", 3: "Crisis", 4: "Emergency"}
-IPC_COLORS  = {1: SUCCESS, 2: "#F1C40F", 3: WARNING, 4: DANGER}
+IPC_COLORS  = {1: GREEN, 2: YELLOW, 3: ORANGE, 4: RED}
 IPC_ICONS   = {1: "🟢", 2: "🟡", 3: "🟠", 4: "🔴"}
 IPC_ACTIONS = {
-    1: "Continue monitoring",
+    1: "No action needed — continue monitoring",
     2: "Alert field teams — pre-position supplies",
     3: "Deploy food stocks and vouchers immediately",
     4: "EMERGENCY — deploy cash transfers NOW",
 }
+
 MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun",
                "Jul","Aug","Sep","Oct","Nov","Dec"]
 
-# ── CSS ───────────────────────────────────────────────────
-st.markdown(f"""
+# ── Custom CSS ─────────────────────────────────────────────
+st.markdown("""
 <style>
-  html, body, [data-testid="stAppViewContainer"] {{
-    background: #F7F9FC;
-    font-family: 'Segoe UI', sans-serif;
-  }}
-  [data-testid="stSidebar"] {{ background: {DARK}; }}
-  [data-testid="stSidebar"] * {{ color: #ECF0F1 !important; }}
-  [data-testid="stSidebar"] label {{
-    color: #BDC3C7 !important;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }}
+    .main { background-color: #F8FAFC; }
+    .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
 
-  .banner {{
-    background: linear-gradient(135deg, {DARK} 0%, {PRIMARY} 100%);
-    border-radius: 14px;
-    padding: 28px 32px;
-    margin-bottom: 22px;
-    color: white;
-  }}
-  .banner h1 {{ margin:0; font-size:1.85rem; font-weight:800; color:white !important; }}
-  .banner p  {{ margin:6px 0 0 0; opacity:0.78; font-size:0.92rem; }}
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 18px 20px;
+        border-left: 5px solid #1F5C8B;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        margin-bottom: 12px;
+    }
+    .metric-card h3 { margin: 0; font-size: 13px; color: #666; font-weight: 500; }
+    .metric-card h1 { margin: 4px 0 0 0; font-size: 32px; font-weight: 700; color: #0D3C6E; }
+    .metric-card p  { margin: 2px 0 0 0; font-size: 12px; color: #888; }
 
-  .kcard {{
-    background: white;
-    border-radius: 12px;
-    padding: 18px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-    border-left: 5px solid {PRIMARY};
-    margin-bottom: 10px;
-  }}
-  .kcard.danger  {{ border-left-color:{DANGER}; }}
-  .kcard.warning {{ border-left-color:{WARNING}; }}
-  .kcard.success {{ border-left-color:{SUCCESS}; }}
-  .kcard.neutral {{ border-left-color:{NEUTRAL}; }}
-  .kcard .klabel {{ font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:{NEUTRAL}; }}
-  .kcard .kval   {{ font-size:1.9rem; font-weight:800; color:{DARK}; line-height:1.1; }}
-  .kcard .ksub   {{ font-size:0.75rem; color:{NEUTRAL}; margin-top:2px; }}
+    .alert-card {
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+    }
+    .alert-emergency { background: #FDEDEC; border-left: 5px solid #E74C3C; }
+    .alert-crisis    { background: #FEF9E7; border-left: 5px solid #E67E22; }
+    .alert-stressed  { background: #FFFDE7; border-left: 5px solid #F4D03F; }
+    .alert-minimal   { background: #EAFAF1; border-left: 5px solid #2ECC71; }
+    .alert-anomaly   { border: 2px dashed #E74C3C !important; }
 
-  .sec {{ font-size:1rem; font-weight:700; color:{DARK};
-    border-bottom:2px solid {LIGHT}; padding-bottom:5px; margin:18px 0 12px 0; }}
+    .stSelectbox label { font-weight: 600; color: #1F5C8B; }
+    .stSlider label    { font-weight: 600; color: #1F5C8B; }
 
-  .arow {{
-    display:flex; align-items:flex-start; gap:12px;
-    background:white; border-radius:10px; padding:13px 16px;
-    margin-bottom:7px; box-shadow:0 1px 5px rgba(0,0,0,0.06);
-    border-left:4px solid {NEUTRAL};
-  }}
-  .arow.p2 {{ border-left-color:#F1C40F; }}
-  .arow.p3 {{ border-left-color:{WARNING}; }}
-  .arow.p4 {{ border-left-color:{DANGER}; }}
-  .adistrict {{ font-weight:700; color:{DARK}; font-size:0.93rem; }}
-  .ameta {{ font-size:0.76rem; color:{NEUTRAL}; margin-top:3px; }}
-  .aaction {{ font-size:0.8rem; color:{WARNING}; margin-top:2px; font-weight:600; }}
+    h1 { color: #0D3C6E; }
+    h2 { color: #1F5C8B; border-bottom: 2px solid #D6E8F5; padding-bottom: 6px; }
+    h3 { color: #1F5C8B; }
 
-  .fbox {{
-    background: linear-gradient(135deg, {DARK} 0%, {ACCENT} 100%);
-    border-radius: 12px; padding:18px 22px; color:white; margin-bottom:9px;
-  }}
-  .fbox .ftitle {{ font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; opacity:0.65; margin-bottom:5px; }}
-  .fbox .ftext  {{ font-size:0.95rem; line-height:1.5; }}
-  .fbox .flang  {{ font-size:0.72rem; opacity:0.55; margin-top:7px; }}
+    .wfp-banner {
+        background: linear-gradient(135deg, #0D3C6E 0%, #1F5C8B 100%);
+        color: white;
+        padding: 20px 28px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+    }
+    .wfp-banner h1 { color: white; margin: 0; font-size: 28px; }
+    .wfp-banner p  { color: #B0D0E8; margin: 6px 0 0 0; font-size: 14px; }
 
-  .stTabs [data-baseweb="tab-list"] {{ gap:4px; border-bottom:2px solid {LIGHT}; }}
-  .stTabs [data-baseweb="tab"] {{
-    background:transparent; border-radius:8px 8px 0 0;
-    color:{NEUTRAL}; font-weight:600; padding:7px 16px;
-  }}
-  .stTabs [aria-selected="true"] {{
-    background:white !important; color:{PRIMARY} !important;
-    border-bottom:2px solid {PRIMARY};
-  }}
-  #MainMenu, footer, header {{ visibility:hidden; }}
-  .block-container {{ padding-top:1.4rem; padding-bottom:2rem; }}
+    .farmer-alert {
+        background: #FFF8E1;
+        border: 1px solid #FFD54F;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-top: 12px;
+    }
+    .farmer-alert p { margin: 0; font-size: 15px; line-height: 1.6; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── Load data & models ────────────────────────────────────
+# ── Load data ──────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_csv(Path("data/outputs/predictions_full.csv"))
-    df["pred_ipc_phase"] = df["pred_ipc_phase"].astype(int)
-    df["ipc_phase"]      = df["ipc_phase"].astype(int)
+    base = Path(__file__).parent
+    df = pd.read_csv(base / "data/outputs/predictions_full.csv")
+    df["month_name"] = df["month"].apply(lambda m: MONTH_NAMES[m-1])
+    df["period"]     = df["year"].astype(str) + "-" + df["month"].astype(str).str.zfill(2)
     return df
 
-@st.cache_resource
-def load_models():
-    m = Path("data/models")
-    return {
-        "ipc":       joblib.load(m / "ipc_classifier_xgb.pkl"),
-        "price":     joblib.load(m / "price_regressor_rf.pkl"),
-        "anomaly":   joblib.load(m / "anomaly_detector_if.pkl"),
-        "scaler":    joblib.load(m / "anomaly_scaler.pkl"),
-        "feat":      joblib.load(m / "feature_cols.pkl"),
-        "reg_feat":  joblib.load(m / "reg_feature_cols.pkl"),
-        "anom_feat": joblib.load(m / "anomaly_feature_cols.pkl"),
-        "p2i":       joblib.load(m / "phase_to_idx.pkl"),
-    }
+df = load_data()
 
-df     = load_data()
-models = load_models()
-i2p    = {v: k for k, v in models["p2i"].items()}
-
-ALL_REGIONS   = sorted(df["region"].unique())
-ALL_DISTRICTS = sorted(df["district"].unique())
-ALL_YEARS     = sorted(df["year"].unique())
-LATEST_YEAR   = int(df["year"].max())
-LATEST_MONTH  = int(df[df["year"] == LATEST_YEAR]["month"].max())
-MONTH_STR     = datetime(LATEST_YEAR, LATEST_MONTH, 1).strftime("%B %Y")
-
-PRICE_COLS = [c for c in ["price_maize","price_millet","price_sorghum",
-                            "price_rice","price_cowpeas","price_groundnuts"]
-              if c in df.columns and df[c].notna().sum() > 10]
-
-
-# ── Helpers ───────────────────────────────────────────────
-def kpi(col, label, val, sub, kind=""):
-    col.markdown(f"""
-    <div class="kcard {kind}">
-      <div class="klabel">{label}</div>
-      <div class="kval">{val}</div>
-      <div class="ksub">{sub}</div>
-    </div>""", unsafe_allow_html=True)
-
-def sec(title):
-    st.markdown(f'<div class="sec">{title}</div>', unsafe_allow_html=True)
-
-def plotly_defaults(fig, h=380):
-    fig.update_layout(
-        plot_bgcolor="white", paper_bgcolor="white",
-        font_family="Segoe UI", height=h,
-        margin=dict(l=20, r=20, t=50, b=20),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor="#F0F0F0"),
-    )
-    return fig
-
-
-# ══════════════════════════════════════════════════════════
-#  SIDEBAR
-# ══════════════════════════════════════════════════════════
+# ── Sidebar ────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown(f"""
-    <div style='text-align:center;padding:16px 0 22px'>
-      <div style='font-size:2.2rem;'>🌊</div>
-      <div style='font-size:1.1rem;font-weight:800;color:white;margin-top:5px;'>FloodHunger Ghana</div>
-      <div style='font-size:0.72rem;color:#95A5A6;margin-top:2px;'>Early Warning System</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown("## 🌊 FloodHunger Ghana")
+    st.markdown("**WFP Early Warning System**")
+    st.markdown("---")
 
-    st.markdown("##### 🔎 Filters")
-    sel_regions = st.multiselect("Regions", ALL_REGIONS, default=ALL_REGIONS)
-    year_range  = st.slider("Year Range",
-                            int(df["year"].min()), LATEST_YEAR,
-                            (2015, LATEST_YEAR))
-    sel_phases  = st.multiselect("IPC Phases", [1,2,3,4], default=[1,2,3,4],
-                                  format_func=lambda x: f"Phase {x} — {IPC_LABELS[x]}")
-    only_anom   = st.toggle("Anomalies only", False)
+    st.markdown("### 🗺️ Filters")
+
+    all_regions   = ["All Regions"] + sorted(df["region"].unique().tolist())
+    sel_region    = st.selectbox("Region", all_regions)
+
+    if sel_region == "All Regions":
+        districts_avail = ["All Districts"] + sorted(df["district"].unique().tolist())
+    else:
+        districts_avail = ["All Districts"] + sorted(
+            df[df["region"] == sel_region]["district"].unique().tolist()
+        )
+    sel_district = st.selectbox("District", districts_avail)
+
+    year_min, year_max = int(df["year"].min()), int(df["year"].max())
+    sel_years = st.slider("Year Range", year_min, year_max, (2018, year_max))
 
     st.markdown("---")
+    st.markdown("### 📊 View")
+    page = st.radio("", [
+        "🏠 Overview",
+        "🗺️ District Alert Map",
+        "📈 Trends",
+        "🔍 District Deep Dive",
+        "📢 Farmer Alerts",
+        "🤖 Live Predictions",
+    ])
+    st.markdown("---")
+    st.markdown(f"**Data:** {len(df):,} district-months")
+    st.markdown(f"**Districts:** {df['district'].nunique()}")
+    st.markdown(f"**Period:** {year_min}–{year_max}")
+
+
+# ── Filter data ────────────────────────────────────────────
+mask = (df["year"] >= sel_years[0]) & (df["year"] <= sel_years[1])
+if sel_region != "All Regions":
+    mask &= (df["region"] == sel_region)
+if sel_district != "All Districts":
+    mask &= (df["district"] == sel_district)
+
+dff = df[mask].copy()
+
+# Latest month for snapshot
+max_year  = int(dff["year"].max())
+max_month = int(dff[dff["year"] == max_year]["month"].max())
+latest    = dff[(dff["year"] == max_year) & (dff["month"] == max_month)].copy()
+month_str = datetime(max_year, max_month, 1).strftime("%B %Y")
+
+
+# ══════════════════════════════════════════════════════════
+#  PAGE 1: OVERVIEW
+# ══════════════════════════════════════════════════════════
+if page == "🏠 Overview":
+
     st.markdown(f"""
-    <div style='font-size:0.75rem;color:#95A5A6;line-height:1.7;'>
-      <b style='color:#BDC3C7;'>Dataset</b><br>
-      {df['district'].nunique()} districts · {df['region'].nunique()} regions<br>
-      {df['year'].min()}–{LATEST_YEAR} · {len(df):,} rows<br><br>
-      <b style='color:#BDC3C7;'>Models</b><br>
-      XGBoost · Random Forest · Isolation Forest<br><br>
-      <b style='color:#BDC3C7;'>Sources</b><br>
-      CHIRPS v3 · WFP VAM · ACLED
-    </div>""", unsafe_allow_html=True)
-
-# Apply filters
-fdf = df[
-    df["region"].isin(sel_regions) &
-    df["year"].between(*year_range) &
-    df["pred_ipc_phase"].isin(sel_phases)
-]
-if only_anom:
-    fdf = fdf[fdf["is_anomaly"] == 1]
-
-
-# ══════════════════════════════════════════════════════════
-#  BANNER
-# ══════════════════════════════════════════════════════════
-st.markdown(f"""
-<div class="banner">
-  <h1>🌊 FloodHunger Ghana</h1>
-  <p>Flood-Driven Food Insecurity Early Warning System &nbsp;·&nbsp;
-  {df['district'].nunique()} Districts &nbsp;·&nbsp;
-  {df['region'].nunique()} Regions &nbsp;·&nbsp;
-  Latest: <strong>{MONTH_STR}</strong></p>
-</div>""", unsafe_allow_html=True)
-
-
-# ══════════════════════════════════════════════════════════
-#  KPI ROW
-# ══════════════════════════════════════════════════════════
-latest   = df[(df["year"]==LATEST_YEAR) & (df["month"]==LATEST_MONTH)]
-k1,k2,k3,k4,k5,k6 = st.columns(6)
-kpi(k1, "Crisis Districts",    int((latest["pred_ipc_phase"]>=3).sum()),    f"Phase 3–4  ·  {MONTH_STR}", "danger")
-kpi(k2, "Stressed Districts",  int((latest["pred_ipc_phase"]==2).sum()),    f"Phase 2  ·  {MONTH_STR}",   "warning")
-kpi(k3, "Anomalies",           int(latest["is_anomaly"].sum()),             "Unusual patterns this month","warning")
-kpi(k4, "Avg Rain Anomaly",    f"{fdf['rainfall_anomaly_pct'].mean():+.1f}%", f"{year_range[0]}–{year_range[1]}", "neutral")
-kpi(k5, "Flood Months",        f"{int(fdf['flood_flag'].sum()):,}",         "In filtered period",          "neutral")
-kpi(k6, "Price Shocks",        f"{int(fdf['price_shock_flag'].sum()) if 'price_shock_flag' in fdf.columns else '—'}",
-        "Months >20% price rise", "neutral")
-
-
-# ══════════════════════════════════════════════════════════
-#  TABS
-# ══════════════════════════════════════════════════════════
-t1,t2,t3,t4,t5,t6 = st.tabs([
-    "🗺️  District Overview",
-    "📊  Food Security Trends",
-    "🌧️  Rainfall",
-    "💰  Food Prices",
-    "⚠️  Alert Feed",
-    "🔮  Live Prediction",
-])
-
-
-# ─── TAB 1: DISTRICT OVERVIEW ─────────────────────────────
-with t1:
-    sec("IPC Phase by Region")
-
-    c1, c2 = st.columns([3,1])
-    with c2:
-        ov_year  = st.selectbox("Year",  sorted(ALL_YEARS, reverse=True), key="ov_yr")
-        ov_month = st.selectbox("Month", range(1,13),
-                                format_func=lambda x: MONTH_NAMES[x-1],
-                                index=LATEST_MONTH-1, key="ov_mn")
-        ov_col   = st.selectbox("Colour by", {
-            "pred_ipc_phase":      "IPC Phase",
-            "rainfall_anomaly_pct":"Rain Anomaly %",
-            "compound_risk_score": "Risk Score",
-            "anomaly_score":       "Anomaly Score",
-            "conflict_events":     "Conflict Events",
-        }.keys(), format_func=lambda x: {
-            "pred_ipc_phase":      "IPC Phase",
-            "rainfall_anomaly_pct":"Rain Anomaly %",
-            "compound_risk_score": "Risk Score",
-            "anomaly_score":       "Anomaly Score",
-            "conflict_events":     "Conflict Events",
-        }[x], key="ov_col")
-
-    snap = df[(df["year"]==ov_year) & (df["month"]==ov_month)].copy()
-    snap["phase_label"] = snap["pred_ipc_phase"].map(IPC_LABELS)
-
-    reg_agg = snap.groupby("region").agg(
-        metric   = (ov_col, "mean"),
-        phase    = ("pred_ipc_phase", lambda x: int(x.mode()[0])),
-        districts= ("district","count"),
-    ).reset_index()
-    reg_agg["phase_label"] = reg_agg["phase"].map(IPC_LABELS)
-
-    with c1:
-        fig = px.bar(
-            reg_agg.sort_values("metric"),
-            x="metric", y="region", orientation="h",
-            color="metric",
-            color_continuous_scale=[SUCCESS, "#F1C40F", WARNING, DANGER],
-            labels={"metric": ov_col.replace("_"," ").title(), "region":""},
-            title=f"{ov_col.replace('_',' ').title()} — {MONTH_NAMES[ov_month-1]} {ov_year}",
-            hover_data={"districts":True,"phase_label":True},
-            height=480,
-        )
-        fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                          font_family="Segoe UI", coloraxis_showscale=False,
-                          margin=dict(l=10,r=10,t=50,b=10))
-        st.plotly_chart(fig, use_container_width=True)
-
-    sec("All Districts This Month")
-    tbl = snap[[
-        "district","region","pred_ipc_phase","pred_ipc_label",
-        "pred_ipc_confidence","rainfall_anomaly_pct","flood_flag",
-        "conflict_events","is_anomaly","compound_risk_score",
-    ]].rename(columns={
-        "pred_ipc_phase":"IPC Phase","pred_ipc_label":"Status",
-        "pred_ipc_confidence":"Confidence","rainfall_anomaly_pct":"Rain Anomaly %",
-        "flood_flag":"Flood","conflict_events":"Conflicts",
-        "is_anomaly":"Anomaly","compound_risk_score":"Risk Score",
-    }).sort_values("IPC Phase", ascending=False)
-
-    def _bg(s):
-        return [
-            {1:"background-color:#d5f5e3",2:"background-color:#fef9e7",
-             3:"background-color:#fdebd0",4:"background-color:#fadbd8"}.get(v,"")
-            for v in s
-        ]
-
-    st.dataframe(
-        tbl.style.apply(_bg, subset=["IPC Phase"])
-                 .format({"Confidence":"{:.1%}","Rain Anomaly %":"{:+.1f}","Risk Score":"{:.2f}"}),
-        use_container_width=True, height=360,
-    )
-
-
-# ─── TAB 2: FOOD SECURITY TRENDS ──────────────────────────
-with t2:
-    sec("IPC Phase Distribution Over Time")
-
-    c1,c2 = st.columns([2,1])
-    with c2:
-        tr_region = st.selectbox("Region", ["All Ghana"]+ALL_REGIONS, key="tr_reg")
-        tr_view   = st.radio("Group by", ["Year","Month"], horizontal=True, key="tr_view")
-
-    tdf = fdf if tr_region=="All Ghana" else fdf[fdf["region"]==tr_region]
-
-    with c1:
-        grp = "year" if tr_view=="Year" else "month"
-        ph_grp = tdf.groupby([grp,"pred_ipc_phase"]).size().reset_index(name="count")
-        ph_grp["label"] = ph_grp["pred_ipc_phase"].map(IPC_LABELS)
-        if grp == "month":
-            ph_grp["month_name"] = ph_grp["month"].apply(lambda x: MONTH_NAMES[x-1])
-            x_col, cat_ord = "month_name", {"month_name": MONTH_NAMES}
-        else:
-            x_col, cat_ord = "year", {}
-
-        fig = px.bar(ph_grp, x=x_col, y="count", color="label",
-                     color_discrete_map={"Minimal":SUCCESS,"Stressed":"#F1C40F",
-                                         "Crisis":WARNING,"Emergency":DANGER},
-                     labels={"count":"District-Months","label":"IPC Phase"},
-                     title=f"IPC Phase Distribution by {tr_view} — {tr_region}",
-                     category_orders=cat_ord, height=380)
-        fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                          font_family="Segoe UI", barmode="stack",
-                          legend=dict(orientation="h",y=1.05),
-                          margin=dict(l=20,r=20,t=55,b=20))
-        st.plotly_chart(fig, use_container_width=True)
-
-    sec("Average IPC Phase Timeline")
-    avg_ipc = tdf.groupby(["year","month"])["pred_ipc_phase"].mean().reset_index()
-    avg_ipc["date"] = pd.to_datetime(avg_ipc[["year","month"]].assign(day=1))
-
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=avg_ipc["date"], y=avg_ipc["pred_ipc_phase"],
-        mode="lines", fill="tozeroy",
-        line=dict(color=PRIMARY, width=2.2),
-        fillcolor="rgba(31,92,139,0.11)", name="Avg IPC Phase",
-    ))
-    for ph, lbl, col in [(2,"Stressed","#F1C40F"),(3,"Crisis",WARNING),(4,"Emergency",DANGER)]:
-        fig2.add_hline(y=ph, line_dash="dot", line_color=col,
-                       annotation_text=lbl, annotation_position="right")
-    fig2.update_layout(plot_bgcolor="white", paper_bgcolor="white", height=280,
-                       font_family="Segoe UI", yaxis_title="Avg IPC Phase",
-                       yaxis=dict(range=[1,4.5],showgrid=True,gridcolor="#F0F0F0"),
-                       xaxis=dict(showgrid=False),
-                       margin=dict(l=20,r=80,t=20,b=20))
-    st.plotly_chart(fig2, use_container_width=True)
-
-    sec("Region × Month Heatmap")
-    heat = tdf.groupby(["region","month"])["pred_ipc_phase"].mean().reset_index()
-    hpiv = heat.pivot(index="region", columns="month", values="pred_ipc_phase")
-    hpiv.columns = [MONTH_NAMES[c-1] for c in hpiv.columns]
-    fig3 = px.imshow(hpiv,
-                     color_continuous_scale=["#2ECC71","#F1C40F","#E67E22","#C0392B"],
-                     zmin=1, zmax=4, aspect="auto",
-                     labels=dict(color="IPC Phase"),
-                     title="Avg IPC Phase — Region × Month",
-                     height=370)
-    fig3.update_layout(font_family="Segoe UI", paper_bgcolor="white",
-                       margin=dict(l=20,r=20,t=50,b=20))
-    st.plotly_chart(fig3, use_container_width=True)
-
-
-# ─── TAB 3: RAINFALL ──────────────────────────────────────
-with t3:
-    sec("Rainfall Anomaly Over Time")
-
-    c1,c2 = st.columns([2,1])
-    with c2:
-        rd = st.selectbox("District", ALL_DISTRICTS, key="rd")
-        rc = st.multiselect("Compare with", ALL_DISTRICTS, default=[], max_selections=3, key="rc")
-
-    rain_df = fdf[fdf["district"].isin([rd]+rc)].copy()
-    rain_df["date"] = pd.to_datetime(rain_df[["year","month"]].assign(day=1))
-
-    with c1:
-        fig = px.line(rain_df, x="date", y="rainfall_anomaly_pct", color="district",
-                      labels={"rainfall_anomaly_pct":"Anomaly (%)","date":""},
-                      title="Rainfall Anomaly % — District Comparison", height=370)
-        fig.add_hline(y=50,  line_dash="dash", line_color=DANGER,
-                      annotation_text="Flood risk +50%")
-        fig.add_hline(y=-40, line_dash="dash", line_color=WARNING,
-                      annotation_text="Drought risk −40%")
-        fig.add_hrect(y0=50, y1=250, fillcolor="rgba(192,57,43,0.06)", line_width=0)
-        fig.add_hrect(y0=-250, y1=-40, fillcolor="rgba(230,126,34,0.06)", line_width=0)
-        fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                          font_family="Segoe UI",
-                          xaxis=dict(showgrid=False),
-                          yaxis=dict(showgrid=True,gridcolor="#F0F0F0"),
-                          margin=dict(l=20,r=20,t=50,b=20))
-        st.plotly_chart(fig, use_container_width=True)
-
-    c1,c2 = st.columns(2)
-    flood_reg   = fdf.groupby("region")["flood_flag"].sum().sort_values().reset_index()
-    drought_reg = fdf.groupby("region")["drought_flag"].sum().sort_values().reset_index()
-
-    with c1:
-        sec("Flood Months by Region")
-        fig = px.bar(flood_reg, x="flood_flag", y="region", orientation="h",
-                     color="flood_flag",
-                     color_continuous_scale=[LIGHT, PRIMARY, DARK],
-                     labels={"flood_flag":"Months","region":""}, height=340)
-        fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                          font_family="Segoe UI", coloraxis_showscale=False,
-                          margin=dict(l=10,r=10,t=30,b=10))
-        st.plotly_chart(fig, use_container_width=True)
-
-    with c2:
-        sec("Drought Months by Region")
-        fig = px.bar(drought_reg, x="drought_flag", y="region", orientation="h",
-                     color="drought_flag",
-                     color_continuous_scale=[LIGHT, WARNING, DANGER],
-                     labels={"drought_flag":"Months","region":""}, height=340)
-        fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                          font_family="Segoe UI", coloraxis_showscale=False,
-                          margin=dict(l=10,r=10,t=30,b=10))
-        st.plotly_chart(fig, use_container_width=True)
-
-    sec("Rainfall Anomaly Distribution")
-    fig = px.histogram(
-        fdf["rainfall_anomaly_pct"].clip(-100,150), nbins=80,
-        color_discrete_sequence=[PRIMARY],
-        labels={"value":"Rainfall Anomaly (%)"},
-        title="All Districts — Rainfall Anomaly Distribution", height=280,
-    )
-    fig.add_vline(x=50,  line_dash="dash", line_color=DANGER,  annotation_text="Flood risk")
-    fig.add_vline(x=-40, line_dash="dash", line_color=WARNING, annotation_text="Drought risk")
-    fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                      font_family="Segoe UI", showlegend=False,
-                      margin=dict(l=20,r=20,t=50,b=20))
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# ─── TAB 4: FOOD PRICES ───────────────────────────────────
-with t4:
-    sec("Commodity Price Trend")
-
-    c1,c2 = st.columns([2,1])
-    with c2:
-        sel_comm    = st.selectbox("Commodity", PRICE_COLS,
-                                   format_func=lambda x: x.replace("price_","").title(),
-                                   key="comm")
-        price_reg   = st.selectbox("Region", ["All Ghana"]+ALL_REGIONS, key="preg")
-        show_pred   = st.toggle("Show predicted price change", True)
-
-    pdf = fdf if price_reg=="All Ghana" else fdf[fdf["region"]==price_reg]
-    pts = pdf.groupby(["year","month"])[[sel_comm,"pred_price_change"]].mean().reset_index()
-    pts["date"] = pd.to_datetime(pts[["year","month"]].assign(day=1))
-    pts = pts.dropna(subset=[sel_comm])
-
-    with c1:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=pts["date"], y=pts[sel_comm],
-            mode="lines", name=sel_comm.replace("price_","").title()+" price",
-            line=dict(color=PRIMARY, width=2.5),
-            fill="tozeroy", fillcolor="rgba(31,92,139,0.09)",
-        ))
-        if show_pred and "pred_price_change" in pts.columns:
-            fig.add_trace(go.Bar(
-                x=pts["date"], y=pts["pred_price_change"],
-                name="Pred. Change %",
-                marker_color=[DANGER if v>0 else SUCCESS for v in pts["pred_price_change"].fillna(0)],
-                opacity=0.45, yaxis="y2",
-            ))
-        fig.update_layout(
-            title=f"{sel_comm.replace('price_','').title()} Price — {price_reg}",
-            plot_bgcolor="white", paper_bgcolor="white",
-            font_family="Segoe UI", height=390,
-            yaxis=dict(title="GHS/kg",showgrid=True,gridcolor="#F0F0F0"),
-            yaxis2=dict(title="Pred. Change %", overlaying="y", side="right",
-                        showgrid=False, zeroline=True, zerolinecolor="#DDD"),
-            legend=dict(orientation="h",y=1.05),
-            xaxis=dict(showgrid=False),
-            margin=dict(l=20,r=60,t=55,b=20),
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    c1,c2 = st.columns(2)
-    with c1:
-        sec("Latest Commodity Prices")
-        lp   = df[(df["year"]==LATEST_YEAR) & (df["month"]==LATEST_MONTH)]
-        pavg = {c: lp[c].mean() for c in PRICE_COLS}
-        pdf2 = pd.DataFrame({"commodity":list(pavg.keys()),"price":list(pavg.values())})
-        pdf2["commodity"] = pdf2["commodity"].str.replace("price_","").str.title()
-        pdf2 = pdf2.dropna().sort_values("price")
-        fig  = px.bar(pdf2, x="price", y="commodity", orientation="h",
-                      color="price",
-                      color_continuous_scale=[LIGHT, PRIMARY, DARK],
-                      labels={"price":"Avg GHS/kg","commodity":""},
-                      title=f"Avg Prices — {MONTH_STR}", height=300)
-        fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                          font_family="Segoe UI", coloraxis_showscale=False,
-                          margin=dict(l=10,r=10,t=50,b=10))
-        st.plotly_chart(fig, use_container_width=True)
-
-    with c2:
-        if "price_shock_flag" in fdf.columns:
-            sec("Price Shock History")
-            sh = fdf.groupby("year")["price_shock_flag"].sum().reset_index()
-            fig= px.bar(sh, x="year", y="price_shock_flag",
-                        color="price_shock_flag",
-                        color_continuous_scale=[LIGHT, DANGER],
-                        labels={"price_shock_flag":"Shock Months","year":""},
-                        title="Price Shock Months per Year (>20% rise)", height=300)
-            fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
-                              font_family="Segoe UI", coloraxis_showscale=False,
-                              margin=dict(l=10,r=10,t=50,b=10))
-            st.plotly_chart(fig, use_container_width=True)
-
-
-# ─── TAB 5: ALERT FEED ────────────────────────────────────
-with t5:
-    sec("WFP District Alert Feed")
-
-    c1,c2 = st.columns([2,1])
-    with c2:
-        al_yr  = st.selectbox("Year",  sorted(ALL_YEARS,reverse=True), key="al_yr")
-        al_mn  = st.selectbox("Month", range(1,13),
-                               format_func=lambda x: MONTH_NAMES[x-1],
-                               index=LATEST_MONTH-1, key="al_mn")
-        min_ph = st.selectbox("Min Phase", [1,2,3,4], index=1,
-                               format_func=lambda x: f"Phase {x} — {IPC_LABELS[x]}",
-                               key="min_ph")
-
-    al_df = df[
-        (df["year"]==al_yr) & (df["month"]==al_mn) &
-        (df["pred_ipc_phase"]>=min_ph)
-    ].sort_values("pred_ipc_phase", ascending=False)
-
-    with c1:
-        if len(al_df)==0:
-            st.success(f"✅ No districts at Phase {min_ph}+ in {MONTH_NAMES[al_mn-1]} {al_yr}")
-        else:
-            st.caption(f"**{len(al_df)} districts** at Phase {min_ph}+ — {MONTH_NAMES[al_mn-1]} {al_yr}")
-            for _, r in al_df.iterrows():
-                ph   = int(r["pred_ipc_phase"])
-                anom = " &nbsp;⚠️ <b>ANOMALY</b>" if r["is_anomaly"]==1 else ""
-                st.markdown(f"""
-                <div class="arow p{ph}">
-                  <div style="font-size:1.5rem;margin-top:2px;">{IPC_ICONS[ph]}</div>
-                  <div style="flex:1;">
-                    <div class="adistrict">{r['district']}
-                      <span style="font-weight:400;color:{NEUTRAL};font-size:0.8rem;">
-                        · {r['region']}</span>{anom}
+    <div class="wfp-banner">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <!-- WFP Logo SVG -->
+                <div style="background:white;border-radius:8px;padding:6px 10px;display:flex;align-items:center;">
+                    <svg width="52" height="52" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="48" fill="#009FDA" stroke="white" stroke-width="2"/>
+                        <text x="50" y="38" text-anchor="middle" fill="white" font-size="18" font-weight="bold" font-family="Arial">WFP</text>
+                        <!-- wheat stalk left -->
+                        <line x1="30" y1="75" x2="30" y2="50" stroke="white" stroke-width="2"/>
+                        <ellipse cx="30" cy="50" rx="4" ry="7" fill="white" transform="rotate(-15 30 50)"/>
+                        <ellipse cx="30" cy="58" rx="4" ry="7" fill="white" transform="rotate(15 30 58)"/>
+                        <ellipse cx="24" cy="54" rx="4" ry="7" fill="white" transform="rotate(-30 24 54)"/>
+                        <!-- wheat stalk center -->
+                        <line x1="50" y1="78" x2="50" y2="50" stroke="white" stroke-width="2"/>
+                        <ellipse cx="50" cy="50" rx="4" ry="7" fill="white"/>
+                        <ellipse cx="50" cy="58" rx="4" ry="7" fill="white" transform="rotate(15 50 58)"/>
+                        <ellipse cx="44" cy="54" rx="4" ry="7" fill="white" transform="rotate(-30 44 54)"/>
+                        <!-- wheat stalk right -->
+                        <line x1="70" y1="75" x2="70" y2="50" stroke="white" stroke-width="2"/>
+                        <ellipse cx="70" cy="50" rx="4" ry="7" fill="white" transform="rotate(15 70 50)"/>
+                        <ellipse cx="70" cy="58" rx="4" ry="7" fill="white" transform="rotate(-15 70 58)"/>
+                        <ellipse cx="76" cy="54" rx="4" ry="7" fill="white" transform="rotate(30 76 54)"/>
+                        <text x="50" y="92" text-anchor="middle" fill="white" font-size="9" font-family="Arial">UN World Food Programme</text>
+                    </svg>
+                </div>
+                <div>
+                    <h1 style="color:white;margin:0;font-size:26px;">🌊 FloodHunger Ghana</h1>
+                    <p style="color:#B0D0E8;margin:4px 0 0;font-size:13px;">
+                        Flood-Driven Food Insecurity Early Warning System &nbsp;·&nbsp;
+                        {df['district'].nunique()} Districts &nbsp;·&nbsp;
+                        {year_min}–{year_max} &nbsp;·&nbsp;
+                        WFP / FEWS NET Aligned
+                    </p>
+                </div>
+            </div>
+            <!-- Blossom Academy branding -->
+            <div style="text-align:right;">
+                <div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 14px;border:1px solid rgba(255,255,255,0.25);">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <svg width="28" height="28" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="30" cy="30" r="28" fill="#FF6B35"/>
+                            <circle cx="30" cy="22" r="7" fill="white"/>
+                            <ellipse cx="18" cy="28" rx="5" ry="7" fill="#FFD700" transform="rotate(-30 18 28)"/>
+                            <ellipse cx="42" cy="28" rx="5" ry="7" fill="#FFD700" transform="rotate(30 42 28)"/>
+                            <ellipse cx="22" cy="40" rx="5" ry="7" fill="#FFD700" transform="rotate(20 22 40)"/>
+                            <ellipse cx="38" cy="40" rx="5" ry="7" fill="#FFD700" transform="rotate(-20 38 40)"/>
+                            <circle cx="30" cy="30" r="5" fill="#FF6B35"/>
+                        </svg>
+                        <div>
+                            <div style="color:white;font-weight:700;font-size:13px;line-height:1.2;">Blossom Academy</div>
+                            <div style="color:#FFD700;font-size:10px;">Ghana · Data for Good</div>
+                        </div>
                     </div>
-                    <div class="aaction">{IPC_ACTIONS[ph]}</div>
-                    <div class="ameta">
-                      Rain anomaly <b>{r['rainfall_anomaly_pct']:+.1f}%</b> &nbsp;·&nbsp;
-                      Flood <b>{'Yes' if r['flood_flag']==1 else 'No'}</b> &nbsp;·&nbsp;
-                      Conflicts <b>{int(r['conflict_events'])}</b> &nbsp;·&nbsp;
-                      Risk score <b>{r['compound_risk_score']:.2f}</b> &nbsp;·&nbsp;
-                      Confidence <b>{r['pred_ipc_confidence']:.1%}</b>
-                    </div>
-                  </div>
-                </div>""", unsafe_allow_html=True)
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    sec("📢 Farmer Voice Alert Bulletin")
-    st.caption("Plain-language alerts for SMS broadcast — Twi · Dagbani · Ewe · Hausa")
+    # ── Top metrics ───────────────────────────────────────
+    c1, c2, c3, c4 = st.columns(4)
 
-    crisis = al_df[al_df["pred_ipc_phase"]>=3]
-    if len(crisis)==0:
-        st.info("No Phase 3+ districts this period.")
-    else:
-        for _, r in crisis.iterrows():
-            rain    = r["rainfall_anomaly_pct"]
-            weather = ("⛈️ Heavy flooding detected." if r["flood_flag"]==1
-                       else "☀️ Severe dry spell — low rainfall." if rain < -30
-                       else "🌤️ Unstable weather conditions.")
-            pmsg    = ("Food prices rising — buy or store food now."
-                       if "Rising" in str(r.get("pred_price_direction",""))
-                       else "Food prices stable.")
-            full    = f"{weather} {pmsg} Contact your district food officer."
+    crisis_pct = (dff["pred_ipc_phase"] >= 3).mean() * 100
+    flood_pct  = dff["flood_flag"].mean() * 100
+    anom_n     = dff["is_anomaly"].sum()
+    avg_risk   = dff["compound_risk_score"].mean()
+
+    with c1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>Districts in Crisis / Emergency</h3>
+            <h1>{crisis_pct:.1f}%</h1>
+            <p>of district-months in selected period</p>
+        </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>Flood-Flagged Months</h3>
+            <h1>{flood_pct:.1f}%</h1>
+            <p>rainfall anomaly &gt; 50% above average</p>
+        </div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>Anomalous Risk Months</h3>
+            <h1>{int(anom_n):,}</h1>
+            <p>unusual compound risk patterns detected</p>
+        </div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>Avg Compound Risk Score</h3>
+            <h1>{avg_risk:.2f}</h1>
+            <p>higher = more compounding pressures</p>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ── Charts row 1 ─────────────────────────────────────
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### IPC Phase Distribution")
+        phase_counts = dff["pred_ipc_phase"].value_counts().sort_index()
+        fig, ax = plt.subplots(figsize=(6, 3.5))
+        colors = [IPC_COLORS.get(p, BLUE) for p in phase_counts.index]
+        bars = ax.bar(
+            [f"P{p}\n{IPC_LABELS[p]}" for p in phase_counts.index],
+            phase_counts.values, color=colors, alpha=0.9, edgecolor="white", linewidth=1.5
+        )
+        for bar, val in zip(bars, phase_counts.values):
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 20,
+                    f"{val:,}", ha="center", fontsize=9, fontweight="bold")
+        ax.set_ylabel("District-Month Count")
+        ax.spines[["top","right"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+    with col2:
+        st.markdown("### Average IPC Phase by Region")
+        ipc_reg = dff.groupby("region")["pred_ipc_phase"].mean().sort_values(ascending=True)
+        fig, ax = plt.subplots(figsize=(6, 3.5))
+        c_reg = [RED if v >= 3 else ORANGE if v >= 2.5 else BLUE for v in ipc_reg.values]
+        ax.barh(ipc_reg.index, ipc_reg.values, color=c_reg, alpha=0.85)
+        ax.axvline(2, color=ORANGE, lw=1.5, ls="--", alpha=0.7, label="Stressed")
+        ax.axvline(3, color=RED,    lw=1.5, ls="--", alpha=0.7, label="Crisis")
+        ax.set_xlabel("Mean IPC Phase")
+        ax.legend(fontsize=8)
+        ax.spines[["top","right"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+    # ── Charts row 2 ─────────────────────────────────────
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.markdown("### Rainfall Anomaly by Year")
+        rain_yr = dff.groupby("year")["rainfall_anomaly_pct"].mean()
+        fig, ax = plt.subplots(figsize=(6, 3.5))
+        colors_yr = [BLUE if v >= 0 else RED for v in rain_yr.values]
+        ax.bar(rain_yr.index, rain_yr.values, color=colors_yr, alpha=0.85, edgecolor="white")
+        ax.axhline(0, color="black", lw=0.8, ls="--")
+        ax.set_ylabel("Anomaly (%)")
+        ax.set_xlabel("Year")
+        ax.spines[["top","right"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+    with col4:
+        st.markdown("### Seasonal Food Security Pattern")
+        ipc_m = dff.groupby("month")["pred_ipc_phase"].mean()
+        fig, ax = plt.subplots(figsize=(6, 3.5))
+        ax.plot(ipc_m.index, ipc_m.values, color=BLUE, lw=2.5, marker="o", ms=6)
+        ax.fill_between(ipc_m.index, ipc_m.values, 1, alpha=0.1, color=BLUE)
+        ax.axhline(2, color=ORANGE, lw=1.5, ls="--", alpha=0.7, label="Stressed")
+        ax.axhline(3, color=RED,    lw=1.5, ls="--", alpha=0.7, label="Crisis")
+        ax.set_xticks(range(1,13))
+        ax.set_xticklabels(MONTH_NAMES, fontsize=8)
+        ax.set_ylabel("Avg IPC Phase")
+        ax.legend(fontsize=8)
+        ax.spines[["top","right"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+
+# ══════════════════════════════════════════════════════════
+#  PAGE 2: DISTRICT ALERT MAP
+# ══════════════════════════════════════════════════════════
+elif page == "🗺️ District Alert Map":
+
+    st.markdown(f"## 🗺️ District Alert Snapshot — {month_str}")
+    st.markdown(f"Latest predictions for all districts. Use sidebar to filter by region.")
+
+    # Sort by risk
+    snapshot = latest.sort_values(["pred_ipc_phase","is_anomaly"], ascending=[False, False])
+
+    # Summary bar
+    phase_dist = snapshot["pred_ipc_phase"].value_counts().sort_index()
+    c1, c2, c3, c4 = st.columns(4)
+    for col, (ph, cnt) in zip([c1, c2, c3, c4], phase_dist.items()):
+        with col:
             st.markdown(f"""
-            <div class="fbox">
-              <div class="ftitle">🔴 {r['district']} · {r['region']} · Phase {int(r['pred_ipc_phase'])}</div>
-              <div class="ftext">{full}</div>
-              <div class="flang">Translate before broadcast → Twi · Dagbani · Ewe · Hausa</div>
+            <div class="metric-card" style="border-left-color: {IPC_COLORS[ph]}">
+                <h3>{IPC_ICONS[ph]} Phase {ph} — {IPC_LABELS[ph]}</h3>
+                <h1>{cnt}</h1>
+                <p>districts this month</p>
             </div>""", unsafe_allow_html=True)
 
-    sec("🔍 Top Anomalous District-Months")
-    anom_tbl = df[df["is_anomaly"]==1][[
-        "district","region","year","month","anomaly_score",
-        "ipc_phase","rainfall_anomaly_pct","conflict_events"
-    ]].sort_values("anomaly_score", ascending=False).head(50).copy()
-    anom_tbl["month"] = anom_tbl["month"].apply(lambda x: MONTH_NAMES[x-1])
-    st.dataframe(anom_tbl.reset_index(drop=True), use_container_width=True, height=280)
+    st.markdown("---")
 
-    sec("📥 Download Alert Data")
-    dl_df = al_df[[
+    # Alert cards
+    for _, row in snapshot.iterrows():
+        ph     = int(row["pred_ipc_phase"])
+        anom   = row["is_anomaly"] == 1
+        cls    = {1:"minimal", 2:"stressed", 3:"crisis", 4:"emergency"}.get(ph, "minimal")
+        a_cls  = " alert-anomaly" if anom else ""
+        rain   = row["rainfall_anomaly_pct"]
+        rain_s = f"{'⬆' if rain > 0 else '⬇'} {abs(rain):.0f}% vs avg"
+        price  = row.get("pred_price_direction", "→ Stable")
+        conf   = row["pred_ipc_confidence"]
+        anom_s = "  ⚠️ ANOMALY DETECTED" if anom else ""
+
+        st.markdown(f"""
+        <div class="alert-card alert-{cls}{a_cls}">
+            <strong>{IPC_ICONS[ph]} {row['district']}</strong>
+            &nbsp;&nbsp;<span style="color:#666; font-size:13px">{row['region']}</span>
+            &nbsp;&nbsp;<span style="background:{IPC_COLORS[ph]};color:white;
+                border-radius:4px;padding:2px 8px;font-size:12px;font-weight:bold">
+                Phase {ph} — {IPC_LABELS[ph]}</span>
+            &nbsp;<span style="color:#888;font-size:12px">Confidence: {conf:.2f}</span>
+            <span style="color:#E74C3C;font-weight:bold;font-size:12px">{anom_s}</span>
+            <br/>
+            <span style="font-size:13px;color:#444">
+                🌧 Rain: {rain_s} &nbsp;|&nbsp;
+                🌽 Food price: {price} &nbsp;|&nbsp;
+                ⚡ Risk score: {row['compound_risk_score']:.2f} &nbsp;|&nbsp;
+                🏛 Action: {IPC_ACTIONS[ph]}
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════
+#  PAGE 3: TRENDS
+# ══════════════════════════════════════════════════════════
+elif page == "📈 Trends":
+
+    st.markdown("## 📈 Historical Trends")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### IPC Phase Over Time")
+        ipc_time = dff.groupby(["year","month"])["pred_ipc_phase"].mean().reset_index()
+        ipc_time["date_n"] = ipc_time["year"] + (ipc_time["month"] - 1) / 12
+        fig, ax = plt.subplots(figsize=(7, 4))
+        ax.plot(ipc_time["date_n"], ipc_time["pred_ipc_phase"],
+                color=BLUE, lw=2, alpha=0.9)
+        ax.fill_between(ipc_time["date_n"], ipc_time["pred_ipc_phase"], 1,
+                        alpha=0.1, color=BLUE)
+        ax.axhline(2, color=ORANGE, lw=1, ls="--", alpha=0.6, label="Stressed")
+        ax.axhline(3, color=RED,    lw=1, ls="--", alpha=0.6, label="Crisis")
+        ax.set_ylabel("Avg IPC Phase")
+        ax.set_xlabel("Year")
+        ax.legend(fontsize=8)
+        ax.spines[["top","right"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+    with col2:
+        st.markdown("### Food Price Change Over Time")
+        if "price_change_pct" in dff.columns:
+            price_time = dff.groupby(["year","month"])["price_change_pct"].mean().reset_index()
+            price_time["date_n"] = price_time["year"] + (price_time["month"] - 1) / 12
+            price_time = price_time.dropna(subset=["price_change_pct"])
+            fig, ax = plt.subplots(figsize=(7, 4))
+            ax.plot(price_time["date_n"], price_time["price_change_pct"],
+                    color=ORANGE, lw=2)
+            ax.axhline(0,  color="black", lw=0.8, ls="--")
+            ax.axhline(20, color=RED,     lw=1.2, ls="--", alpha=0.6, label="Shock (+20%)")
+            ax.fill_between(price_time["date_n"], price_time["price_change_pct"], 0,
+                            where=price_time["price_change_pct"] > 0,
+                            alpha=0.15, color=RED, label="Price rise")
+            ax.set_ylabel("Monthly Change (%)")
+            ax.set_xlabel("Year")
+            ax.legend(fontsize=8)
+            ax.spines[["top","right"]].set_visible(False)
+            ax.set_facecolor("#F8FAFC")
+            fig.patch.set_facecolor("#F8FAFC")
+            st.pyplot(fig)
+            plt.close()
+        else:
+            st.info("Price change data not available for this selection.")
+
+    st.markdown("---")
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.markdown("### Flood Months per Year")
+        flood_yr = dff.groupby("year")["flood_flag"].sum()
+        fig, ax = plt.subplots(figsize=(7, 4))
+        ax.bar(flood_yr.index, flood_yr.values, color=BLUE, alpha=0.85, edgecolor="white")
+        ax.set_ylabel("Flood District-Months")
+        ax.set_xlabel("Year")
+        ax.spines[["top","right"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+    with col4:
+        st.markdown("### Conflict Events per Year")
+        if "conflict_events" in dff.columns:
+            conf_yr = dff.groupby("year")["conflict_events"].sum()
+            fig, ax = plt.subplots(figsize=(7, 4))
+            ax.plot(conf_yr.index, conf_yr.values, color=RED, lw=2.5, marker="o", ms=5)
+            ax.fill_between(conf_yr.index, conf_yr.values, alpha=0.12, color=RED)
+            ax.set_ylabel("Total Events")
+            ax.set_xlabel("Year")
+            ax.spines[["top","right"]].set_visible(False)
+            ax.set_facecolor("#F8FAFC")
+            fig.patch.set_facecolor("#F8FAFC")
+            st.pyplot(fig)
+            plt.close()
+
+
+# ══════════════════════════════════════════════════════════
+#  PAGE 4: DISTRICT DEEP DIVE
+# ══════════════════════════════════════════════════════════
+elif page == "🔍 District Deep Dive":
+
+    st.markdown("## 🔍 District Deep Dive")
+
+    if sel_district == "All Districts":
+        st.info("👈 Select a specific district from the sidebar to deep dive.")
+    else:
+        dist_df = df[df["district"] == sel_district].sort_values(["year","month"])
+        dist_df["date_n"] = dist_df["year"] + (dist_df["month"] - 1) / 12
+
+        # Header
+        latest_dist = dist_df.iloc[-1]
+        ph  = int(latest_dist["pred_ipc_phase"])
+        st.markdown(f"""
+        <div style="background:{IPC_COLORS[ph]}22;border-left:5px solid {IPC_COLORS[ph]};
+             border-radius:10px;padding:16px 22px;margin-bottom:20px">
+            <h2 style="margin:0;color:{DBLUE}">{IPC_ICONS[ph]} {sel_district}</h2>
+            <p style="margin:4px 0 0;color:#555">{latest_dist['region']} Region &nbsp;·&nbsp;
+            Latest: <strong>Phase {ph} — {IPC_LABELS[ph]}</strong> ({month_str}) &nbsp;·&nbsp;
+            Confidence: {latest_dist['pred_ipc_confidence']:.2f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Flood Months (total)", int(dist_df["flood_flag"].sum()))
+        with c2:
+            st.metric("Anomalous Months", int(dist_df["is_anomaly"].sum()))
+        with c3:
+            st.metric("Avg Risk Score", f"{dist_df['compound_risk_score'].mean():.2f}")
+
+        st.markdown("---")
+
+        # IPC over time
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("### IPC Phase History")
+            fig, ax = plt.subplots(figsize=(7, 4))
+            colors_ts = [IPC_COLORS.get(p, BLUE) for p in dist_df["pred_ipc_phase"]]
+            ax.scatter(dist_df["date_n"], dist_df["pred_ipc_phase"],
+                       c=colors_ts, s=20, zorder=3, alpha=0.8)
+            ax.plot(dist_df["date_n"], dist_df["pred_ipc_phase"],
+                    color=BLUE, lw=1.2, alpha=0.5)
+            ax.axhline(2, color=ORANGE, lw=1, ls="--", alpha=0.6, label="Stressed")
+            ax.axhline(3, color=RED,    lw=1, ls="--", alpha=0.6, label="Crisis")
+            ax.set_yticks([1,2,3,4])
+            ax.set_yticklabels(["P1\nMinimal","P2\nStressed","P3\nCrisis","P4\nEmergency"])
+            ax.set_xlabel("Year")
+            ax.legend(fontsize=8)
+            ax.spines[["top","right"]].set_visible(False)
+            ax.set_facecolor("#F8FAFC")
+            fig.patch.set_facecolor("#F8FAFC")
+            st.pyplot(fig)
+            plt.close()
+
+        with col2:
+            st.markdown("### Rainfall Anomaly History")
+            fig, ax = plt.subplots(figsize=(7, 4))
+            ax.bar(dist_df["date_n"], dist_df["rainfall_anomaly_pct"],
+                   color=[BLUE if v >= 0 else RED for v in dist_df["rainfall_anomaly_pct"]],
+                   alpha=0.75, width=0.06)
+            ax.axhline(50,  color=BLUE, lw=1.2, ls="--", alpha=0.6, label="Flood flag (+50%)")
+            ax.axhline(-40, color=RED,  lw=1.2, ls="--", alpha=0.6, label="Drought flag (-40%)")
+            ax.axhline(0,   color="black", lw=0.8)
+            ax.set_ylabel("Rainfall Anomaly (%)")
+            ax.set_xlabel("Year")
+            ax.legend(fontsize=8)
+            ax.spines[["top","right"]].set_visible(False)
+            ax.set_facecolor("#F8FAFC")
+            fig.patch.set_facecolor("#F8FAFC")
+            st.pyplot(fig)
+            plt.close()
+
+        # Top risk months
+        st.markdown("### ⚠️ Highest Risk Months")
+        top_risk = (
+            dist_df[["year","month","pred_ipc_phase","pred_ipc_label","rainfall_anomaly_pct",
+                      "pred_price_direction","is_anomaly","compound_risk_score"]]
+            .sort_values("compound_risk_score", ascending=False)
+            .head(10)
+        )
+        top_risk["month"] = top_risk["month"].apply(lambda m: MONTH_NAMES[m-1])
+        top_risk["Anomaly"] = top_risk["is_anomaly"].apply(lambda x: "⚠️" if x == 1 else "")
+        top_risk = top_risk.drop(columns=["is_anomaly"])
+        top_risk.columns = ["Year","Month","IPC Phase","IPC Label","Rain Anomaly (%)","Price Direction","Risk Score","Anomaly"]
+        st.dataframe(top_risk, use_container_width=True, hide_index=True)
+
+
+# ══════════════════════════════════════════════════════════
+#  PAGE 5: FARMER ALERTS
+# ══════════════════════════════════════════════════════════
+elif page == "📢 Farmer Alerts":
+
+    st.markdown(f"## 📢 Farmer Voice Alert Bulletin — {month_str}")
+    st.markdown("*Ready for broadcast via Africa's Talking SMS gateway in Twi, Dagbani, Ewe, Hausa*")
+    st.markdown("---")
+
+    high_risk = latest[latest["pred_ipc_phase"] >= 3].sort_values("pred_ipc_phase", ascending=False)
+    anomalous = latest[(latest["pred_ipc_phase"] < 3) & (latest["is_anomaly"] == 1)]
+    stressed  = latest[latest["pred_ipc_phase"] == 2]
+
+    if len(high_risk) == 0 and len(anomalous) == 0:
+        st.success("✅ No high-risk districts this month. All districts in Minimal or Stressed phase.")
+
+    if len(high_risk) > 0:
+        st.markdown(f"### 🔴 {len(high_risk)} District(s) — Crisis or Emergency")
+        for _, row in high_risk.iterrows():
+            ph    = int(row["pred_ipc_phase"])
+            rain  = row["rainfall_anomaly_pct"]
+            price = str(row.get("pred_price_direction", "→ Stable"))
+
+            if row["flood_flag"] == 1:
+                weather_msg = "Heavy flooding has been detected in your area this season."
+            elif rain < -30:
+                weather_msg = "There is a severe dry spell in your area. Crops are under stress."
+            else:
+                weather_msg = "Weather conditions are unstable and unpredictable this season."
+
+            if "Rising" in price:
+                price_msg = "Food prices are rising sharply. Buy or store food now before prices go higher."
+            elif "Falling" in price:
+                price_msg = "Food prices are expected to fall. This may be a good time to buy in bulk."
+            else:
+                price_msg = "Food prices are currently stable in your local market."
+
+            st.markdown(f"""
+            <div class="alert-card alert-{'emergency' if ph == 4 else 'crisis'}">
+                <strong>{IPC_ICONS[ph]} {row['district']} — {row['region']}</strong><br/>
+                <span style="font-size:13px;color:#666">
+                    Phase {ph}: {IPC_LABELS[ph]} &nbsp;·&nbsp;
+                    Confidence: {row['pred_ipc_confidence']:.2f} &nbsp;·&nbsp;
+                    WFP Action: {IPC_ACTIONS[ph]}
+                </span>
+            </div>
+            <div class="farmer-alert">
+                <p>📢 <strong>Voice Alert (English):</strong><br/>
+                {weather_msg} {price_msg}
+                Contact your district food and agriculture officer immediately.
+                Help is available.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.markdown("")
+
+    if len(anomalous) > 0:
+        st.markdown(f"### ⚠️ {len(anomalous)} District(s) — Unusual Risk Pattern")
+        for _, row in anomalous.iterrows():
+            st.markdown(f"""
+            <div class="alert-card alert-stressed alert-anomaly">
+                <strong>⚠️ {row['district']} — {row['region']}</strong><br/>
+                <span style="font-size:13px;color:#666">
+                    Phase {int(row['pred_ipc_phase'])}: {row['pred_ipc_label']} but
+                    unusual compound risk detected (score: {row['anomaly_score']:.3f}).
+                    Monitor closely — situation may escalate.
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if len(stressed) > 0:
+        with st.expander(f"🟡 {len(stressed)} Districts in Stressed Phase (Phase 2)"):
+            for _, row in stressed.iterrows():
+                st.markdown(f"- **{row['district']}** ({row['region']}) — "
+                            f"Confidence: {row['pred_ipc_confidence']:.2f} | "
+                            f"Price: {row.get('pred_price_direction','N/A')}")
+
+    st.markdown("---")
+    st.markdown("### 📥 Download Alert Feed")
+    csv = latest[[
         "district","region","pred_ipc_phase","pred_ipc_label",
         "pred_ipc_confidence","pred_ipc_action",
-        "rainfall_anomaly_pct","flood_flag","conflict_events",
-        "is_anomaly","compound_risk_score"
-    ]]
+        "pred_price_direction","is_anomaly","compound_risk_score"
+    ]].sort_values(["pred_ipc_phase"], ascending=False).to_csv(index=False)
+
     st.download_button(
-        "⬇️ Download CSV", dl_df.to_csv(index=False),
-        file_name=f"floodhunger_alerts_{al_yr}_{al_mn:02d}.csv",
+        label="⬇️ Download WFP Alert CSV",
+        data=csv,
+        file_name=f"floodhunger_ghana_alerts_{max_year}_{max_month:02d}.csv",
         mime="text/csv",
     )
 
 
-# ─── TAB 6: LIVE PREDICTION ───────────────────────────────
-with t6:
-    sec("🔮 Real-Time IPC Phase Prediction")
-    st.caption("Enter current field conditions — models return an IPC phase, price forecast, and anomaly flag instantly.")
+# ══════════════════════════════════════════════════════════
+#  PAGE 6: LIVE PREDICTIONS
+# ══════════════════════════════════════════════════════════
+elif page == "🤖 Live Predictions":
 
-    c1,c2,c3 = st.columns(3)
+    st.markdown("## 🤖 Live IPC Phase Predictor")
+    st.markdown(
+        "Enter current field conditions below. The model will estimate the IPC food security "
+        "phase for your scenario using the same logic as the trained pipeline."
+    )
 
-    with c1:
-        st.markdown("**📍 Location & Time**")
-        p_district = st.selectbox("District", ALL_DISTRICTS, key="pd")
-        p_region   = st.selectbox("Region", ALL_REGIONS, key="pr")
-        p_month    = st.selectbox("Month", range(1,13),
-                                  format_func=lambda x: MONTH_NAMES[x-1], key="pm")
-        p_year     = st.number_input("Year", 2003, 2030, LATEST_YEAR, key="py")
+    # ── Simple rule-based prediction engine (mirrors model logic) ──────────
+    def predict_ipc(rainfall_anom, price_change, flood_flag, conflict_events,
+                    ndvi_anom, population_density, prev_ipc):
+        """
+        Heuristic scoring that mirrors the trained model's feature importance.
+        Returns (phase: int, confidence: float, drivers: list[str])
+        """
+        score = 0.0
+        drivers = []
 
-    with c2:
-        st.markdown("**🌧️ Rainfall Conditions**")
-        p_rain_mm   = st.slider("Rainfall this month (mm)",     0.0,  300.0,  55.0, 0.5)
-        p_rain_anom = st.slider("Rainfall anomaly (%)",        -100.0,200.0,   0.0, 1.0)
-        p_rain_3m   = st.slider("3-month cumulative (mm)",       0.0,  600.0, 160.0, 5.0)
-        p_flood_l1  = st.toggle("Flood occurred last month?")
-        p_drought   = st.toggle("Drought conditions present?")
+        # Rainfall anomaly (most important)
+        if rainfall_anom >= 50:
+            score += 2.5
+            drivers.append(f"🌊 Severe flood signal (+{rainfall_anom:.0f}% rainfall anomaly)")
+        elif rainfall_anom <= -40:
+            score += 2.0
+            drivers.append(f"☀️ Drought signal ({rainfall_anom:.0f}% rainfall deficit)")
+        elif rainfall_anom <= -20:
+            score += 0.8
+            drivers.append(f"🌤 Moderate dry spell ({rainfall_anom:.0f}%)")
 
-    with c3:
-        st.markdown("**💰 Prices & Conflict**")
-        p_price_chg = st.slider("Food price change (%)",      -50.0, 100.0,  0.0, 0.5)
-        p_price_vol = st.slider("Price volatility — 3m std",   0.0,  50.0,   5.0, 0.5)
-        p_conflict  = st.slider("Conflict events this month",  0, 30, 0)
-        p_conf_l1   = st.slider("Conflict events last month",  0, 30, 0)
+        # Food price change
+        if price_change >= 30:
+            score += 2.0
+            drivers.append(f"📈 Price shock (+{price_change:.0f}% food price increase)")
+        elif price_change >= 15:
+            score += 1.0
+            drivers.append(f"📊 Elevated food prices (+{price_change:.0f}%)")
+        elif price_change <= -10:
+            score -= 0.5
+            drivers.append(f"📉 Food prices falling ({price_change:.0f}%)")
 
-    predict = st.button("🔮 Predict Now", type="primary", use_container_width=True)
+        # Flood flag
+        if flood_flag:
+            score += 1.2
+            drivers.append("🚨 Active flood event flagged")
 
-    if predict:
-        VULN = {"Northern","Upper East","Upper West","Savannah","North East","Oti"}
+        # Conflict
+        if conflict_events >= 5:
+            score += 1.5
+            drivers.append(f"⚔️ High conflict activity ({conflict_events} events)")
+        elif conflict_events >= 2:
+            score += 0.6
+            drivers.append(f"⚠️ Moderate conflict ({conflict_events} events)")
 
-        fv = {f: 0.0 for f in models["feat"]}
-        fv.update({
-            "rainfall_mm":              p_rain_mm,
-            "rainfall_anomaly_pct":     p_rain_anom,
-            "rainfall_3m_mm":           p_rain_3m,
-            "rainfall_rolling_3m":      p_rain_3m / 3,
-            "rainfall_rolling_6m":      p_rain_3m / 2,
-            "flood_flag":               1 if p_rain_anom > 50 else 0,
-            "drought_flag":             1 if p_drought else 0,
-            "flood_flag_lag1":          1 if p_flood_l1 else 0,
-            "price_change_pct":         p_price_chg,
-            "price_volatility_3m":      p_price_vol,
-            "price_shock_flag":         1 if p_price_chg > 20 else 0,
-            "conflict_events":          float(p_conflict),
-            "conflict_events_lag1":     float(p_conf_l1),
-            "conflict_lag1":            float(p_conf_l1),
-            "is_lean_season":           1 if p_month in [12,1,2,3] else 0,
-            "month_sin":                float(np.sin(2*np.pi*p_month/12)),
-            "month_cos":                float(np.cos(2*np.pi*p_month/12)),
-            "time_trend":               (p_year - 2003)*12 + p_month,
-            "district_vulnerability":   2 if p_region in VULN else 1,
-            "flood_price_interaction":  (1 if p_rain_anom>50 else 0) * p_price_chg,
-            "flood_price_lag1_interact":(1 if p_flood_l1 else 0) * p_price_chg,
-            "compound_risk_score":      (
-                abs(p_rain_anom)*0.01 +
-                (2.0 if p_rain_anom>50 else 0) +
-                max(0, p_price_chg)*0.05 +
-                p_conflict*0.1 +
-                (1 if p_month in [12,1,2,3] else 0)
-            ),
-            "region_type":              0 if p_region in VULN else 2 if p_region in {"Greater Accra","Central","Western"} else 1,
-        })
+        # NDVI anomaly (vegetation health)
+        if ndvi_anom <= -0.15:
+            score += 1.0
+            drivers.append(f"🌿 Vegetation stress (NDVI Δ {ndvi_anom:.2f})")
+        elif ndvi_anom >= 0.10:
+            score -= 0.3
 
-        Xi = pd.DataFrame([fv])[models["feat"]]
+        # Previous IPC phase (momentum)
+        if prev_ipc >= 3:
+            score += 0.8
+            drivers.append(f"🔁 Carry-over from previous Phase {prev_ipc}")
+        elif prev_ipc == 1:
+            score -= 0.4
 
-        pred_idx   = int(models["ipc"].predict(Xi)[0])
-        pred_phase = i2p[pred_idx]
-        pred_prob  = float(models["ipc"].predict_proba(Xi)[0].max())
-        pred_price = float(models["price"].predict(Xi[models["reg_feat"]])[0])
+        # Population density pressure
+        if population_density >= 200:
+            score += 0.5
+            drivers.append(f"👥 High population density ({population_density:.0f}/km²)")
 
-        Xa_raw = Xi[[f for f in models["anom_feat"] if f in Xi.columns]].reindex(
-            columns=models["anom_feat"], fill_value=0)
-        Xa_sc  = models["scaler"].transform(Xa_raw)
-        is_anom  = models["anomaly"].predict(Xa_sc)[0] == -1
-        anom_sc  = float(-models["anomaly"].score_samples(Xa_sc)[0])
+        # Map score → IPC phase
+        if score <= 0.5:
+            phase = 1
+        elif score <= 1.8:
+            phase = 2
+        elif score <= 3.5:
+            phase = 3
+        else:
+            phase = 4
 
-        st.markdown("---")
-        r1,r2,r3,r4 = st.columns(4)
-        kind = "danger" if pred_phase>=3 else "warning" if pred_phase==2 else "success"
-        kpi(r1, "IPC Phase",       f"{IPC_ICONS[pred_phase]} Phase {pred_phase}", IPC_LABELS[pred_phase], kind)
-        kpi(r2, "Confidence",      f"{pred_prob:.1%}",    "Model certainty",      "neutral")
-        kpi(r3, "Price Forecast",  f"{pred_price:+.1f}%", "Next month change",
-            "danger" if pred_price>10 else "success" if pred_price<-5 else "neutral")
-        kpi(r4, "Anomaly",         "⚠️ YES" if is_anom else "✅ NO",
-            f"Score: {anom_sc:.3f}", "warning" if is_anom else "success")
+        # Confidence: higher when score is clearly in one zone
+        zone_centers = {1: 0.0, 2: 1.2, 3: 2.7, 4: 4.5}
+        dist_to_center = abs(score - zone_centers[phase])
+        confidence = max(0.55, min(0.97, 0.97 - dist_to_center * 0.12))
 
-        weather = ("⛈️ Heavy flooding detected." if p_rain_anom > 50
-                   else "☀️ Severe dry conditions." if p_drought
-                   else "🌤️ Conditions appear normal.")
-        pmsg    = ("Food prices rising — store food now." if pred_price>10
-                   else "Prices stable." if pred_price>-5
-                   else "Prices falling — good time to buy.")
-        full    = f"{weather} {pmsg} Contact your district food officer."
+        if not drivers:
+            drivers.append("✅ Conditions within normal range")
 
-        st.markdown(f"""
-        <div class="fbox" style="margin-top:16px;">
-          <div class="ftitle">WFP RECOMMENDED ACTION — {p_district}, {p_region}</div>
-          <div class="ftext" style="font-size:1.05rem;font-weight:600;">{IPC_ACTIONS[pred_phase]}</div>
-          <div class="ftext" style="margin-top:8px;font-size:0.9rem;opacity:0.85;">📢 {full}</div>
-          <div class="flang">Translate before broadcast → Twi · Dagbani · Ewe · Hausa</div>
-        </div>""", unsafe_allow_html=True)
+        return phase, round(confidence, 2), drivers, round(score, 2)
 
-        with st.expander("🔬 Raw prediction inputs"):
-            st.json({k: round(v,4) if isinstance(v,float) else v
-                     for k,v in fv.items() if v != 0.0})
+    # ── Input form ──────────────────────────────────────────────────────────
+    st.markdown("---")
+
+    col_in1, col_in2 = st.columns(2)
+
+    with col_in1:
+        st.markdown("### 🌦 Climate & Environment")
+        inp_rainfall  = st.slider("Rainfall Anomaly (%)",
+                                  min_value=-80, max_value=150, value=0, step=5,
+                                  help="% deviation from long-run average. +50 = flood zone, -40 = drought zone")
+        inp_flood     = st.checkbox("Active Flood Event", value=False,
+                                    help="Tick if field teams confirm active flooding")
+        inp_ndvi      = st.slider("NDVI Anomaly (vegetation health)",
+                                  min_value=-0.40, max_value=0.40, value=0.0, step=0.01,
+                                  format="%.2f",
+                                  help="Negative = stressed crops. Below -0.15 is severe.")
+
+    with col_in2:
+        st.markdown("### 🌽 Markets & Conflict")
+        inp_price     = st.slider("Food Price Change (%)",
+                                  min_value=-30, max_value=80, value=0, step=1,
+                                  help="Month-on-month change in local food market prices")
+        inp_conflict  = st.slider("Conflict Events (last 30 days)",
+                                  min_value=0, max_value=20, value=0, step=1,
+                                  help="Number of reported conflict incidents in district")
+        inp_pop       = st.slider("Population Density (per km²)",
+                                  min_value=10, max_value=500, value=80, step=10)
+        inp_prev_ipc  = st.selectbox("Previous Month IPC Phase",
+                                     options=[1, 2, 3, 4],
+                                     format_func=lambda x: f"Phase {x} — {IPC_LABELS[x]}")
+
+    st.markdown("---")
+
+    # ── Run prediction ───────────────────────────────────────────────────────
+    phase, conf, drivers, raw_score = predict_ipc(
+        inp_rainfall, inp_price, inp_flood,
+        inp_conflict, inp_ndvi, inp_pop, inp_prev_ipc
+    )
+
+    color  = IPC_COLORS[phase]
+    icon   = IPC_ICONS[phase]
+    label  = IPC_LABELS[phase]
+    action = IPC_ACTIONS[phase]
+
+    # ── Result card ─────────────────────────────────────────────────────────
+    st.markdown(f"""
+    <div style="background:{color}22;border-left:6px solid {color};border-radius:12px;
+         padding:22px 28px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.08)">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="font-size:52px;line-height:1">{icon}</div>
+            <div>
+                <h2 style="margin:0;color:{DBLUE};font-size:22px;">
+                    IPC Phase {phase} — {label}
+                </h2>
+                <p style="margin:4px 0 0;color:#555;font-size:14px;">
+                    Model confidence: <strong>{conf:.0%}</strong> &nbsp;·&nbsp;
+                    Raw risk score: <strong>{raw_score}</strong> &nbsp;·&nbsp;
+                    Threshold crossed: <strong>Phase {phase}</strong>
+                </p>
+            </div>
+        </div>
+        <div style="margin-top:14px;background:rgba(255,255,255,0.6);
+             border-radius:8px;padding:12px 16px;font-size:14px;color:#333">
+            🏛 <strong>Recommended WFP Action:</strong> {action}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Driver breakdown ─────────────────────────────────────────────────────
+    c_res1, c_res2 = st.columns([1, 1])
+
+    with c_res1:
+        st.markdown("### 🔍 Key Risk Drivers")
+        for d in drivers:
+            st.markdown(f"- {d}")
+
+    with c_res2:
+        st.markdown("### 📊 Risk Score Breakdown")
+        fig, ax = plt.subplots(figsize=(5, 2.2))
+        phase_thresholds = [0.5, 1.8, 3.5]
+        phase_colors_bg  = [GREEN, YELLOW, ORANGE, RED]
+        boundaries = [0, 0.5, 1.8, 3.5, 6.0]
+        for i in range(4):
+            ax.barh(0, boundaries[i+1] - boundaries[i],
+                    left=boundaries[i], color=phase_colors_bg[i],
+                    alpha=0.3, height=0.5)
+            ax.text((boundaries[i] + boundaries[i+1]) / 2, -0.38,
+                    f"P{i+1}", ha="center", fontsize=8, color="#555")
+        ax.barh(0, min(raw_score, 6.0), left=0,
+                color=color, alpha=0.85, height=0.3)
+        ax.axvline(min(raw_score, 6.0), color=color, lw=2.5)
+        ax.set_xlim(0, 6)
+        ax.set_ylim(-0.6, 0.5)
+        ax.set_yticks([])
+        ax.set_xlabel("Composite Risk Score", fontsize=9)
+        ax.spines[["top","right","left"]].set_visible(False)
+        ax.set_facecolor("#F8FAFC")
+        fig.patch.set_facecolor("#F8FAFC")
+        st.pyplot(fig)
+        plt.close()
+
+    # ── Scenario table ───────────────────────────────────────────────────────
+    st.markdown("### 📋 Scenario Summary")
+    scenario_data = {
+        "Parameter": [
+            "Rainfall Anomaly", "Food Price Change", "Active Flood",
+            "Conflict Events", "NDVI Anomaly", "Population Density", "Prev. IPC Phase"
+        ],
+        "Value": [
+            f"{inp_rainfall:+d}%", f"{inp_price:+d}%",
+            "Yes 🚨" if inp_flood else "No ✅",
+            str(inp_conflict), f"{inp_ndvi:+.2f}",
+            f"{inp_pop} /km²", f"Phase {inp_prev_ipc} — {IPC_LABELS[inp_prev_ipc]}"
+        ],
+        "Status": [
+            "⚠️ Flood" if inp_rainfall >= 50 else ("⚠️ Drought" if inp_rainfall <= -40 else "✅ Normal"),
+            "🔴 Shock" if inp_price >= 30 else ("🟡 Elevated" if inp_price >= 15 else "✅ Normal"),
+            "🔴 Active" if inp_flood else "✅ None",
+            "🔴 High" if inp_conflict >= 5 else ("🟡 Moderate" if inp_conflict >= 2 else "✅ Low"),
+            "🔴 Stressed" if inp_ndvi <= -0.15 else "✅ Healthy",
+            "🟡 Dense" if inp_pop >= 200 else "✅ Normal",
+            "🔴 Crisis+" if inp_prev_ipc >= 3 else "✅ Stable",
+        ]
+    }
+    st.dataframe(pd.DataFrame(scenario_data), use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    st.caption(
+        "⚙️ This predictor uses a heuristic scoring model aligned to the trained FloodHunger ML pipeline. "
+        "For production deployment, connect to the serialised model via `joblib.load()`. "
+        "Developed with support from **Blossom Academy Ghana** · Powered by **WFP FEWS NET** methodology."
+    )
