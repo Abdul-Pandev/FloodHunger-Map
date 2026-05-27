@@ -1,0 +1,54 @@
+district,region,pred_ipc_phase,pred_ipc_label,pred_ipc_confidence,pred_ipc_action,pred_price_change,pred_price_direction,is_anomaly,anomaly_score,rainfall_anomaly_pct,flood_flag,compound_risk_score
+Bawku Municipal,Upper East,3,Crisis,0.995,Deploy food stocks and vouchers,5.99,↑ Rising,1,0.5313,-12.633,0,2.022
+Bolgatanga Municipal,Upper East,3,Crisis,0.996,Deploy food stocks and vouchers,5.38,↑ Rising,1,0.5637,16.333,0,2.059
+Kasena-Nankana,Upper East,3,Crisis,0.995,Deploy food stocks and vouchers,4.73,→ Stable,1,0.5733,24.7,0,2.143
+Nadowli-Kaleo,Upper West,3,Crisis,0.929,Deploy food stocks and vouchers,12.6,↑ Rising,1,0.5338,-8.867,0,1.732
+Talensi,Upper East,3,Crisis,0.997,Deploy food stocks and vouchers,5.92,↑ Rising,1,0.5425,3.633,0,1.932
+Accra Metropolitan,Greater Accra,3,Crisis,0.953,Deploy food stocks and vouchers,7.22,↑ Rising,0,0.4474,-8.433,0,1.953
+Adentan,Greater Accra,3,Crisis,0.903,Deploy food stocks and vouchers,9.02,↑ Rising,0,0.4431,0.467,0,1.874
+Ahanta West,Western,3,Crisis,0.993,Deploy food stocks and vouchers,8.46,↑ Rising,0,0.5028,-20.8,0,2.234
+Bekwai Municipal,Ashanti,3,Crisis,0.989,Deploy food stocks and vouchers,3.95,→ Stable,0,0.4922,-36.867,0,2.466
+Dormaa Municipal,Bono,3,Crisis,0.992,Deploy food stocks and vouchers,6.79,↑ Rising,0,0.4989,8.967,0,2.284
+Ejisu Municipal,Ashanti,3,Crisis,0.991,Deploy food stocks and vouchers,4.63,→ Stable,0,0.4764,13.833,0,2.236
+Fanteakwa,Eastern,3,Crisis,0.806,Deploy food stocks and vouchers,3.32,→ Stable,0,0.4906,-24.7,0,2.432
+Ga East,Greater Accra,3,Crisis,0.957,Deploy food stocks and vouchers,7.93,↑ Rising,0,0.4594,13.233,0,2.001
+Ga West,Greater Accra,3,Crisis,0.979,Deploy food stocks and vouchers,8.06,↑ Rising,0,0.4982,38.533,0,2.254
+Jirapa,Upper West,3,Crisis,0.934,Deploy food stocks and vouchers,12.63,↑ Rising,0,0.4977,-12.267,0,1.766
+Krachi East,Oti,3,Crisis,0.935,Deploy food stocks and vouchers,5.19,↑ Rising,0,0.4431,-20.8,0,1.508
+Kumasi Metropolitan,Ashanti,3,Crisis,0.99,Deploy food stocks and vouchers,4.31,→ Stable,0,0.4617,-9.567,0,2.193
+Lawra,Upper West,3,Crisis,0.923,Deploy food stocks and vouchers,12.41,↑ Rising,0,0.4965,-7.467,0,1.718
+Mfantsiman Municipal,Central,3,Crisis,0.927,Deploy food stocks and vouchers,10.56,↑ Rising,0,0.4584,-22.0,0,2.104
+Obuasi Municipal,Ashanti,3,Crisis,0.991,Deploy food stocks and vouchers,4.9,→ Stable,0,0.4663,11.967,0,2.217
+Sekondi-Takoradi Metropolitan,Western,3,Crisis,0.995,Deploy food stocks and vouchers,7.9,↑ Rising,0,0.4709,-24.433,0,2.27
+Sunyani East,Bono,3,Crisis,0.992,Deploy food stocks and vouchers,6.94,↑ Rising,0,0.5173,0.3,0,2.197
+Sunyani Municipal,Bono,3,Crisis,0.992,Deploy food stocks and vouchers,5.31,↑ Rising,0,0.5127,-34.9,0,2.543
+Tain,Bono,3,Crisis,0.992,Deploy food stocks and vouchers,7.09,↑ Rising,0,0.4966,3.0,0,2.224
+Techiman Municipal,Bono,3,Crisis,0.992,Deploy food stocks and vouchers,6.38,↑ Rising,0,0.5081,11.7,0,2.311
+Tema Metropolitan,Greater Accra,3,Crisis,0.962,Deploy food stocks and vouchers,7.66,↑ Rising,0,0.4502,9.433,0,1.963
+Wa Municipal,Upper West,3,Crisis,0.933,Deploy food stocks and vouchers,13.19,↑ Rising,0,0.5003,-14.567,0,1.789
+Walewale,North East,3,Crisis,0.935,Deploy food stocks and vouchers,4.37,→ Stable,0,0.4965,-28.133,0,1.381
+Wassa East,Western,3,Crisis,0.984,Deploy food stocks and vouchers,9.21,↑ Rising,0,0.4603,6.4,0,2.09
+Bole,Savannah,2,Stressed,0.978,Alert field teams — pre-position supplies,5.47,↑ Rising,1,0.5727,27.1,0,1.471
+Damongo,Savannah,2,Stressed,0.977,Alert field teams — pre-position supplies,5.76,↑ Rising,1,0.5285,21.267,0,1.413
+Tamale Metropolitan,Northern,2,Stressed,0.928,Alert field teams — pre-position supplies,11.63,↑ Rising,1,0.5251,7.1,0,1.412
+Assin North,Central,2,Stressed,0.941,Alert field teams — pre-position supplies,9.75,↑ Rising,0,0.4584,0.3,0,1.888
+Birim Central Municipal,Eastern,2,Stressed,0.879,Alert field teams — pre-position supplies,2.5,→ Stable,0,0.523,38.8,0,2.572
+Cape Coast Metropolitan,Central,2,Stressed,0.921,Alert field teams — pre-position supplies,8.98,↑ Rising,0,0.4607,12.933,0,2.014
+Dambai,Oti,2,Stressed,0.883,Alert field teams — pre-position supplies,4.78,→ Stable,0,0.4858,48.567,0,1.786
+East Gonja,Savannah,2,Stressed,0.992,Alert field teams — pre-position supplies,5.81,↑ Rising,0,0.4991,4.467,0,1.245
+Gambaga,North East,2,Stressed,0.992,Alert field teams — pre-position supplies,4.92,→ Stable,0,0.4987,-10.0,0,1.2
+Ho Municipal,Volta,2,Stressed,0.89,Alert field teams — pre-position supplies,4.08,→ Stable,0,0.5132,-17.667,0,2.472
+Hohoe Municipal,Volta,2,Stressed,0.927,Alert field teams — pre-position supplies,4.22,→ Stable,0,0.5009,7.467,0,2.37
+Keta Municipal,Volta,2,Stressed,0.87,Alert field teams — pre-position supplies,4.5,→ Stable,0,0.5074,-19.1,0,2.487
+Koforidua,Eastern,2,Stressed,0.892,Alert field teams — pre-position supplies,3.47,→ Stable,0,0.4971,8.133,0,2.266
+Kpando,Volta,2,Stressed,0.922,Alert field teams — pre-position supplies,5.24,↑ Rising,0,0.5015,-7.067,0,2.366
+Kumbungu,Northern,2,Stressed,0.977,Alert field teams — pre-position supplies,12.0,↑ Rising,0,0.4897,-5.033,0,1.392
+Nalerigu,North East,2,Stressed,0.992,Alert field teams — pre-position supplies,5.13,↑ Rising,0,0.5135,5.2,0,1.152
+Nanton,Northern,2,Stressed,0.936,Alert field teams — pre-position supplies,11.78,↑ Rising,0,0.5046,8.8,0,1.43
+Nkwanta South,Oti,2,Stressed,0.988,Alert field teams — pre-position supplies,4.68,→ Stable,0,0.4355,-5.5,0,1.355
+Sagnarigu,Northern,2,Stressed,0.973,Alert field teams — pre-position supplies,11.78,↑ Rising,0,0.5085,3.067,0,1.372
+Tolon,Northern,2,Stressed,0.974,Alert field teams — pre-position supplies,11.89,↑ Rising,0,0.5031,1.6,0,1.358
+Asutifi North,Ahafo,1,Minimal,0.997,Monitor,4.8,→ Stable,0,0.4764,1.933,0,1.019
+Goaso,Ahafo,1,Minimal,0.987,Monitor,4.7,→ Stable,0,0.4675,20.967,0,1.21
+Pru East,Bono East,1,Minimal,0.991,Monitor,5.0,→ Stable,0,0.4618,-18.1,0,1.181
+Techiman North,Bono East,1,Minimal,0.992,Monitor,5.47,↑ Rising,0,0.4523,15.033,0,1.15

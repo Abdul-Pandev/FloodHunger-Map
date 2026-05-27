@@ -1,0 +1,32 @@
+FloodHunger Ghana — Data Collection Log
+Started: 2026-04-24 10:07:29.291866
+
+[10:07:29] [INFO] Starting data collection for 3 datasets...
+[10:07:29] [INFO] Output directory: data/raw/
+[10:07:29] [INFO] Downloading CHIRPS Ghana district rainfall from HDX...
+[10:07:29] [INFO] Source: https://data.humdata.org/dataset/187fc57e-07af-43d9-b412-6aaba91a3209/resource/d6375170-563a-48a8-a7bb-69cfe440783c/download/gha-rainfall-adm2-full.csv
+[10:07:29] [ERROR] HTTP error: 403 Client Error: Forbidden for url: https://data.humdata.org/dataset/187fc57e-07af-43d9-b412-6aaba91a3209/resource/d6375170-563a-48a8-a7bb-69cfe440783c/download/gha-rainfall-adm2-full.csv
+[10:07:29] [WARN] Trying fallback URL...
+[10:07:29] [WARN] Using CHIRPS structural fallback — real district names + real seasonal patterns
+[10:07:29] [WARN] NOTE: Download manually from https://data.humdata.org/dataset/gha-rainfall-subnational
+[10:07:30] [WARN] Fallback dataset saved: data/raw/chirps_ghana_rainfall.csv (42,612 rows)
+[10:07:30] [INFO] Downloading WFP Ghana food price data from HDX...
+[10:07:30] [INFO] Source: https://data.humdata.org/dataset/626e809c-c4fc-467b-a60c-129acb5e9320/resource/e877350b-146f-4fa7-8690-db9605eea78c/download/wfp_food_prices_gha.csv
+[10:07:30] [ERROR] HTTP error: 403 Client Error: Forbidden for url: https://data.humdata.org/dataset/626e809c-c4fc-467b-a60c-129acb5e9320/resource/e877350b-146f-4fa7-8690-db9605eea78c/download/wfp_food_prices_gha.csv
+[10:07:30] [WARN] Trying global WFP VAM dataset filtered to Ghana...
+[10:07:30] [WARN] Downloading global WFP food prices (large file — may take a minute)...
+[10:07:30] [ERROR] Global download also failed: 403 Client Error: Forbidden for url: https://data.humdata.org/dataset/4fdcd4dc-5c2f-43af-a1e4-93c9b6539a27/resource/12d7c8e3-eff9-4db0-93b7-726825c4fe9a/download/wfpvam_foodprices.csv
+[10:07:30] [WARN] Generating representative Ghana food price data...
+[10:07:30] [WARN] Generating synthetic WFP-structure food price data for Ghana
+[10:07:30] [WARN] Synthetic food prices saved: data/raw/wfp_food_prices_ghana.csv (15,840 rows)
+[10:07:30] [WARN] ACLED_KEY and ACLED_EMAIL not set in environment
+[10:07:30] [WARN] Register free at https://developer.acleddata.com/
+[10:07:30] [WARN] Then run:  export ACLED_KEY='your_key'  export ACLED_EMAIL='your@email.com'
+[10:07:30] [WARN] Generating synthetic ACLED-structure conflict data for Ghana...
+[10:07:30] [WARN] Generating synthetic ACLED-structure event data for Ghana
+[10:07:30] [WARN] NOTE: Get real data free at https://developer.acleddata.com/
+[10:07:30] [WARN] Synthetic ACLED data saved: data/raw/acled_ghana_events.csv (7,532 rows)
+[10:07:30] [INFO] CHIRPS Rainfall  :   42,612 rows → data/raw/chirps_ghana_rainfall.csv
+[10:07:30] [INFO] WFP Food Prices  :   15,840 rows → data/raw/wfp_food_prices_ghana.csv
+[10:07:30] [INFO] ACLED Conflicts  :    7,532 rows → data/raw/acled_ghana_events.csv
+[10:07:30] [INFO] Log file         : data/raw/collection_log.txt

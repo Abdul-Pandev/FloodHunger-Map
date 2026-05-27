@@ -1,0 +1,46 @@
+============================================================
+  FLOODHUNGER GHANA — DASHBOARD SUMMARY
+  Data: 2003–2024  |  15 Regions
+============================================================
+
+  IPC PHASE DISTRIBUTION (ALL HISTORY)
+    🟢 Phase 1 — Minimal     : 3,838 months (96.9%)  ████████████████████████████████████████████████
+    🟡 Phase 2 — Stressed    :   122 months ( 3.1%)  █
+
+  TOP ANOMALOUS REGIONS (HISTORICAL)
+    • North East: 47 anomalous months
+    • Upper East: 23 anomalous months
+    • Savannah: 22 anomalous months
+    • Northern: 17 anomalous months
+    • Upper West: 5 anomalous months
+
+  LATEST SNAPSHOT — December 2024
+    🟡 Upper East           Phase 2 — Stressed     Price: ↑ Rising     ⚠️ ANOMALY
+    🟢 Ashanti              Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Ahafo                Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Bono East            Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Central              Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Eastern              Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Bono                 Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Greater Accra        Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 North East           Phase 1 — Minimal      Price: ↑ Rising     ⚠️ ANOMALY
+    🟢 Oti                  Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Northern             Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Savannah             Phase 1 — Minimal      Price: ↑ Rising     ⚠️ ANOMALY
+    🟢 Upper West           Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Volta                Phase 1 — Minimal      Price: ↑ Rising     
+    🟢 Western              Phase 1 — Minimal      Price: ↑ Rising     
+
+============================================================
+  FILES GENERATED:
+    data/outputs/predictions_latest.csv   ← all predictions
+    data/outputs/alerts_wfp.csv           ← WFP alert feed
+    data/outputs/farmer_alerts.txt        ← farmer voice alerts
+    data/outputs/dashboard_summary.txt    ← this file
+    data/outputs/model_evaluation_report.txt
+    data/outputs/model1_confusion_matrix.png
+    data/outputs/model1_shap_importance.png
+    data/outputs/model2_feature_importance.png
+    data/outputs/model2_actual_vs_predicted.png
+    data/outputs/model3_anomaly_analysis.png
+============================================================

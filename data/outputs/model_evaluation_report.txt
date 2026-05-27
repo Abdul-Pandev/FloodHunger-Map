@@ -1,0 +1,27 @@
+============================================================
+  FLOODHUNGER GHANA — MODEL EVALUATION REPORT
+============================================================
+
+MODEL 1: IPC Phase Classifier (XGBoost)
+----------------------------------------
+  Weighted F1 Score : 0.9911
+  Classes           : Phase 1 / 2 / 3 / 4
+  Algorithm         : XGBoost + class weights + SHAP
+
+MODEL 2: Price Regressor (Random Forest)
+----------------------------------------
+  MAE               : 1.926%
+  R2                : 0.9493
+  Target            : Monthly food price change %
+
+MODEL 3: Anomaly Detector (Isolation Forest)
+----------------------------------------
+  Anomalies found   : 420 district-months (3.0%)
+  Contamination     : 3%
+
+DATA
+----------------------------------------
+  Districts         : 53
+  Regions           : 15
+  Rows              : 13,992
+  Years             : 2003–2024
